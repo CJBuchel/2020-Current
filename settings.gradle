@@ -11,10 +11,12 @@ pluginManagement {
             if (publicFolder == null) {
                 publicFolder = "C:\\Users\\Public"
             }
-            frcHome = new File(publicFolder, "frc${frcYear}")
+            def homeRoot = new File(publicFolder, "wpilib")
+            frcHome = new File(homeRoot, frcYear)
         } else {
             def userFolder = System.getProperty("user.home")
-            frcHome = new File(userFolder, "frc${frcYear}")
+            def homeRoot = new File(userFolder, "wpilib")
+            frcHome = new File(homeRoot, frcYear)
         }
         def frcHomeMaven = new File(frcHome, 'maven')
         maven {
@@ -25,4 +27,4 @@ pluginManagement {
 }
 
 rootProject.name = 'CurtinFRC2020'
-include 'common', 'wml', '4788', 'Testbot', '4788:src:coprocessor'
+include '4788', 'wml'

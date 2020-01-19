@@ -28,7 +28,6 @@
 #include "sensors/PressureSensor.h"
 #include <networktables/NetworkTableInstance.h>
 #include "control/PIDController.h"
-#include "MotionProfiling.h"
 
 #include "Usage.h"
 
