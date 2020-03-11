@@ -84,7 +84,7 @@ class Turret {
 		double SetPointSelection(double LowPoint, double MaxPoint, double PixleAmount, double TargetInput);
 		void TurretZeroLeft(double Time);
 		void TurretZeroRight(double Time);
-		void TurretZeroAngle(double Time);
+		void TurretZeroAngle();
 
 		void TurretManualState(double dt);
 		void TurretAutoState(double dt);
@@ -127,8 +127,8 @@ class Turret {
 
 		// PID Calculation Y axis (Angle A)
 		double AngleSetPoint[480];
-		double AkP = 20;
-		double AkI = 0;
+		double AkP = 13;
+		double AkI = 6;
 		double AkD = 0;
 
 		double Aerror;
@@ -170,6 +170,7 @@ class Turret {
 		double Rotations2FOV;
 
 		bool ReadyToFire = false;
+		bool TurretZeroed = false;
 
 		//auto 
 		int AutoTurretSwitcher = 1; // I didnt really know what to call it

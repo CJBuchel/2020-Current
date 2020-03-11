@@ -53,17 +53,13 @@ void curtin_frc_vision::run() {
 			offsetY = cy; // Don't need offset. We're using setpoints
 
 			// SampleX[sampleCounter] = offsetX;
-			// SampleY[sampleCounter] = offsetY;
 			// SampleXAcumulator += SampleX[sampleCounter];
-			// SampleYAcumulator += SampleY[sampleCounter];
 			// sampleCounter++;
 
 
-			// if (sampleCounter > 10) {
-			// 	SampleXAcumulator /= 10;
-			// 	SampleYAcumulator /= 10;
+			// if (sampleCounter > 5) {
+			// 	SampleXAcumulator /= 5;
 			// 	AverageCX = SampleXAcumulator;
-			// 	AverageCY = SampleYAcumulator;
 			// 	sampleCounter = 0;
 			// }
 
@@ -73,7 +69,7 @@ void curtin_frc_vision::run() {
 
 			visionTable->PutBoolean("Vision Active", true);
 
-			TargetX.SetDouble(offsetX);
+			TargetX.SetDouble(offsetX-10);
 			TargetY.SetDouble(offsetY);
 			ImageHeight.SetDouble(ResHeight);
 			ImageWidth.SetDouble(ResWidth);

@@ -62,39 +62,21 @@ void Turret::_Update(double dt) {
 				if (targetX > imageWidth || targetY > imageHeight) {
 					std::cout << "Error: Target is artifacting" << std::endl;
 				} else {
-					RotationPower = XAutoAimCalc(dt, targetX);
+					if (_FlyWheel.encoder->GetEncoderAngularVelocity() < 350)
+						RotationPower = XAutoAimCalc(dt, targetX);
 					AngularPower = YAutoAimCalc(dt, targetY);
 				}
 			} 
-			// Limits Turret Speed
-			RotationPower *= ControlMap::MaxTurretSpeed; 
-			AngularPower *= ControlMap::MaxTurretAngularSpeed;
 		break;
 	}
+	// Limits Turret Speed
+	RotationPower *= ControlMap::MaxTurretSpeed; 
+	AngularPower *= ControlMap::MaxTurretAngularSpeed;
 }
 
 void Turret::ZeroTurret() {
-	// Zero Encoder on left limit
-	ZeroTimer.Start();
-
-	// Get Left Limit
-	Turret::TurretZeroLeft(ZeroTimer.Get());
-
-	// Minimum Rotations
-	MinRotation = (_RotationalAxis.encoder->GetEncoderRotations() + ControlMap::TurretEncoderSafeZone);
-	
-	// Get Right Limit
-//	Turret::TurretZeroRight(ZeroTimer.Get());
-
-	// Get Max Rotations
-	MaxRotation = (_RotationalAxis.encoder->GetEncoderTicks() - ControlMap::TurretEncoderSafeZone);
-
-	// Get Angle Limit
-	Turret::TurretZeroAngle(ZeroTimer.Get());
-	
-	// Reset Timers
-	ZeroTimer.Stop();
-	ZeroTimer.Reset();
+	double dt = 0;
+	Turret::TurretZeroAngle();
 
 	// Maxed Vertical Axis & Zero Flywheel
 	MaxAngleRotations = (_VerticalAxis.encoder->GetEncoderRotations() + ControlMap::TurretEncoderSafeZone);
@@ -102,7 +84,9 @@ void Turret::ZeroTurret() {
 }
 
 void Turret::TeleopOnUpdate(double dt) {
-	cameraSyncTimer.Start();
+	if (!TurretZeroed) {
+		TurretZeroAngle();
+	}
 
 	targetX = table->GetNumber("Target_X", 0);
 	targetY = table->GetNumber("Target_Y", 0);
@@ -113,30 +97,12 @@ void Turret::TeleopOnUpdate(double dt) {
 	// Tune Turret PID (If active)
 	PIDTuner();
 
-
-	//annas stuff dont touch 
-	// if (_contGroup.Get(ControlMap::Ball3Fire)) {	
-	// 	while (something) {
-	// 		AutoAimToFire(dt);
-	// 		timer.Start();
-	// 		if (ReadyToFire && timer.Get() <= Ball3Shoot) {
-	// 			_p2 = true;
-	// 		} else {
-	// 			_p2 = false;
-	// 		}
-	// 	}
-	// 	std::cout << "autoooooooooo" << std::endl;
-	// }	
-	//annas stuff dont touch ^
-
-
 	// Switch Turret State
 	if (_contGroup.Get(ControlMap::TurretAutoAimAxis) > ControlMap::triggerDeadzone) {
 		_current_state = TurretState::AUTO_AIM;
 	} else {
 		_current_state = TurretState::MANUAL_AIM;
 	}
-	// _current_state = TurretState::AUTO_AIM;
 	_Update(dt);
 
 	if (_contGroup.Get(ControlMap::RevFlyWheel, Controller::ONRISE)) {
@@ -147,17 +113,14 @@ void Turret::TeleopOnUpdate(double dt) {
 	}
 
 	if (!_FlyWheelToggle) {
-		// FlyWheel Code
-		if ((_contGroup.Get(ControlMap::TurretAutoAim) > ControlMap::triggerDeadzone) && (_contGroup.Get(ControlMap::TurretFlyWheelSpinUp) > ControlMap::triggerDeadzone)) {
+		if (_contGroup.Get(ControlMap::TurretFlyWheelSpinUp) > ControlMap::triggerDeadzone) {
 			FlyWheelAutoSpinup();
-		} else if (_contGroup.Get(ControlMap::TurretFlyWheelSpinUp) > ControlMap::triggerDeadzone) {
-			FlyWheelManualSpinup();
 		} else {
 			FlyWheelPower = 0;
 		}
 	}
 
-	FlyWheelPower = _contGroup.Get(ControlMap::TurretFlyWheelSpinUp);
+	if (_FlyWheelToggle) {RotationPower = 0;}
 
 	
 
@@ -167,133 +130,14 @@ void Turret::TeleopOnUpdate(double dt) {
 	table_2->PutNumber("Turret_Min", MinRotation);
 	table_2->PutNumber("Turret_Max", MaxRotation);
 
+
+
 	_RotationalAxis.transmission->SetVoltage(12 * RotationPower);
 	_VerticalAxis.transmission->SetVoltage(12 * AngularPower);
 	_FlyWheel.transmission->SetVoltage(12 * FlyWheelPower);
 }
 
-void Turret::AutoOnUpdate(double dt) {
-
-	// double targetX = table->GetNumber("Target_X", 0);
-	// double targetY = table->GetNumber("Target_Y", 0);
-	switch (TurretAutoSelection) {
-		case 1:
-			switch(_autoSelector){
-				case 1: // 8 ball auto, shoots 3 balls then 5 balls 
-						if (!_StartDoComplete) {	
-							timer.Start();
-							if (timer.Get() <= Ball3Shoot){
-								AutoAimToFire(dt);
-								if (ReadyToFire) {
-									_p2 = true;
-								}
-								_StartDoComplete = true;
-								timer.Stop();
-								timer.Reset();
-						}	
-
-						if (_strt) {
-							timer.Start();
-							if (timer.Get() <= Ball5Shoot){
-							AutoAimToFire(dt);
-								if (ReadyToFire) {
-									_p3 = true;
-								}
-							}
-							_StartDoComplete = true;
-							timer.Stop();
-							timer.Reset();
-						}
-					}
-				break;
-
-
-				case 2: // 6 ball auto, 2 lots of three balls 
-					if (!_StartDoComplete) {	
-						timer.Start();
-						if (timer.Get() <= Ball3Shoot){
-							AutoAimToFire(dt);
-							if (ReadyToFire) {
-								_p1 = true;
-							}
-							_StartDoComplete = true;
-							timer.Stop();
-							timer.Reset();
-						}	
-
-						if (_strt) {
-							timer.Start();
-							if (timer.Get() <= Ball3Shoot){
-							AutoAimToFire(dt);
-								if (ReadyToFire) {
-									_p2 = true;
-								}
-							}
-							_StartDoComplete = true;
-							timer.Stop();
-							timer.Reset();
-						}
-
-					}
-				break;
-
-
-				case 3: // 3 ball left auto , this is at the end 
-					if (_strt) {
-						timer.Start();
-						if (timer.Get() <= Ball3Shoot) {
-							AutoAimToFire(dt);
-						} else {
-							FlyWheelPower = 0;
-						}
-						_FlyWheel.transmission->SetVoltage(12 * FlyWheelPower);
-						timer.Stop();
-						timer.Reset();
-						_StartDoComplete = false;
-					}
-				break;
-
-				
-				case 4: // 3 ball mid auto
-					if (_strt) {
-						timer.Start();
-						if (timer.Get() <= Ball3Shoot) {
-							AutoAimToFire(dt);
-						} else {
-							FlyWheelPower = 0;
-						}
-						_FlyWheel.transmission->SetVoltage(12 * FlyWheelPower);
-						timer.Stop();
-						timer.Reset();
-						//end of auto
-					}
-				break;
-
-
-				case 5: // 3 ball right auto
-					if (_strt) {
-						timer.Start();
-						if (timer.Get() <= Ball3Shoot) {
-							AutoAimToFire(dt);
-						} else {
-							FlyWheelPower = 0;
-						}
-						_FlyWheel.transmission->SetVoltage(12 * FlyWheelPower);
-						timer.Stop();
-						timer.Reset();
-						_StartDoComplete = false;
-					}
-				break;
-
-
-				case 6: // make it go to case 2 automatically 
-					TurretStop = true;
-					// TurretAutoSelection++; // what??
-				break;
-			}
-		break;
-	}		
-}
+void Turret::AutoOnUpdate(double dt) {}
 
 
 // @TODO Turret Test

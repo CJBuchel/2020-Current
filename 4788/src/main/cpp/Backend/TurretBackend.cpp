@@ -39,7 +39,7 @@ double Turret::SetPointSelection(double LowPoint, double MaxPoint, double PixleA
 // Function called in auto (Aims to fire)
 void Turret::AutoAimToFire(double dt) {
  
-	FlyWheelAutoSpinup();
+	// FlyWheelAutoSpinup();
 
 	RotationPower = XAutoAimCalc(dt, targetX);
 	AngularPower = YAutoAimCalc(dt, targetY);
@@ -50,11 +50,12 @@ void Turret::AutoAimToFire(double dt) {
 }
 
 void Turret::FlyWheelAutoSpinup() {
-	FlyWheelPower += _FlyWheel.encoder->GetEncoderAngularVelocity() < ControlMap::FlyWheelVelocity ? 0.05 : 0;
-	if (_FlyWheel.encoder->GetEncoderAngularVelocity() <= ControlMap::FlyWheelVelocity) {
-		ReadyToFire = true;
-	} else {
-		ReadyToFire = false;
+	if ((abs(_FlyWheel.encoder->GetEncoderAngularVelocity()) > 530) && (abs(_FlyWheel.encoder->GetEncoderAngularVelocity()) < 600)) {
+		FlyWheelPower += 0;
+	} else if (abs(_FlyWheel.encoder->GetEncoderAngularVelocity()) < 580) {
+		FlyWheelPower += 0.01;
+	} else if (abs(_FlyWheel.encoder->GetEncoderAngularVelocity()) > 580) {
+		FlyWheelPower -= 0.001;
 	}
 }
 
@@ -85,18 +86,25 @@ void Turret::TurretSearchForTarget() {
 
 // Using Setpoints
 double Turret::YAutoAimCalc(double dt, double TargetInput) {
-	double targetEncoderValue;
-	int LowPoint = 10;
-	int MaxPoint = 50;
-	int PixleAmount = 2;
+	// Setpoint 1
+	double Yvalue1 = 85;
+	double ECvalue1 = 0.1;
+	// Setpoint 2
+	double Yvalue2 = 225;
+	double ECvalue2 = 0.126;
 
-	// Setpoint Selection.
-	targetEncoderValue = SetPointSelection(LowPoint, MaxPoint, PixleAmount, TargetInput);
+	// Calculate goal
+	double EC = ECvalue2 - ECvalue1;
+	double YV = Yvalue2 - Yvalue1;
+	double Gradient = (EC/YV);
 
+	double Intercept = (ECvalue1 - (Gradient * Yvalue1));
+	double Goal = ((Gradient * TargetInput) + Intercept);
+	table->PutNumber("AngleGoal", Goal);
 
 	// Calculate PID
 	double input = _VerticalAxis.encoder->GetEncoderRotations();
-	Aerror = targetEncoderValue - input;
+	Aerror = Goal - input;
 
 	double derror = (Aerror - ApreviousError) / dt;
 	Asum = Asum + Aerror * dt;
@@ -138,12 +146,13 @@ double Turret::TurretQuery(double Rgoal) {
 // Schedule Gains
 double Turret::ScheduleGains(double dt) {
 	if (abs(targetX) < (abs(imageWidth)/8)) {
-		dt = 0.5; // Make accumulator awesome baby
+		dt = 0.2; // Make accumulator awesome baby
 		kP = &RkP3;
 		kI = &RkI3;
 		kD = &RkD3;
 		GainsSchedule2 = true;
 	} else if (abs(targetX) < (abs(imageWidth)/6)) {
+		// dt = 0.1;
 		kP = &RkP2;
 		kI = &RkI2;
 		kD = &RkD2;
@@ -295,25 +304,18 @@ void Turret::TurretZeroLeft(double Time) {
 // }
 
 // Zero Angle
-void Turret::TurretZeroAngle(double Time) {
-  while(_AngleDownLimit.Get() < 1) {
-		if (ZeroTimer.Get() < ControlMap::TurretZeroTimeoutSeconds) {
-			_VerticalAxis.transmission->SetVoltage(12 * 0.2);
-		} else {
-			_VerticalAxis.transmission->SetVoltage(0);
-			_contGroup.GetController(ControlMap::CoDriver).SetRumble(wml::controllers::RumbleType::kLeftRumble, 1);
-			_contGroup.GetController(ControlMap::CoDriver).SetRumble(wml::controllers::RumbleType::kRightRumble, 1);
-			std::cout << "Turret Zero Timed Out" << std::endl;
-			break;
-		}
+void Turret::TurretZeroAngle() {
+  while(!_AngleDownLimit.Get()) {
+		_VerticalAxis.transmission->SetVoltage(12 * -0.2);
 	}
   _VerticalAxis.encoder->ZeroEncoder();
+	TurretZeroed = true;
 }
 
 
 // Feedback for correct flywheel speeds
 void Turret::ContFlywheelFeedback() {
-  if (_FlyWheel.encoder->GetEncoderAngularVelocity() <= ControlMap::FlyWheelVelocity) {
+  if ((abs(_FlyWheel.encoder->GetEncoderAngularVelocity())) >= 530 && (abs(_FlyWheel.encoder->GetEncoderAngularVelocity()) <= 600)) {
 		_contGroup.GetController(ControlMap::CoDriver).SetRumble(wml::controllers::RumbleType::kLeftRumble, 1);
 		_contGroup.GetController(ControlMap::CoDriver).SetRumble(wml::controllers::RumbleType::kRightRumble, 1);
 	} else {
