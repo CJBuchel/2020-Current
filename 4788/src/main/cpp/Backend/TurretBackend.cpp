@@ -88,10 +88,10 @@ void Turret::TurretSearchForTarget() {
 double Turret::YAutoAimCalc(double dt, double TargetInput) {
 	// Setpoint 1
 	double Yvalue1 = 85;
-	double ECvalue1 = 0.1;
+	double ECvalue1 = 0.09;
 	// Setpoint 2
 	double Yvalue2 = 225;
-	double ECvalue2 = 0.126;
+	double ECvalue2 = 0.145;
 
 	// Calculate goal
 	double EC = ECvalue2 - ECvalue1;
